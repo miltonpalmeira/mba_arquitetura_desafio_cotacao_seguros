@@ -32,7 +32,7 @@ func TestQuoteReadsThePartnerResponse(t *testing.T) {
 	}))
 	defer closeServer()
 
-	quote, err := NewClient().Quote(context.Background(), p, map[string]string{"broker": "corretora-a"})
+	quote, err := NewClient(platform.DefaultResilience()).Quote(context.Background(), p, map[string]string{"broker": "corretora-a"})
 	if err != nil {
 		t.Fatalf("Quote: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestQuoteIdentifiesThePartnerThatFailed(t *testing.T) {
 	}))
 	defer closeServer()
 
-	_, err := NewClient().Quote(context.Background(), p, map[string]string{})
+	_, err := NewClient(platform.DefaultResilience()).Quote(context.Background(), p, map[string]string{})
 	if err == nil {
 		t.Fatal("a 503 from the partner was treated as success")
 	}
@@ -80,7 +80,7 @@ func TestQuoteFailsOnUnreadableResponse(t *testing.T) {
 	}))
 	defer closeServer()
 
-	if _, err := NewClient().Quote(context.Background(), p, map[string]string{}); err == nil {
+	if _, err := NewClient(platform.DefaultResilience()).Quote(context.Background(), p, map[string]string{}); err == nil {
 		t.Fatal("unreadable response was accepted")
 	}
 }
@@ -94,7 +94,7 @@ func TestQuoteHonoursCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	if _, err := NewClient().Quote(ctx, p, map[string]string{}); err == nil {
+	if _, err := NewClient(platform.DefaultResilience()).Quote(ctx, p, map[string]string{}); err == nil {
 		t.Fatal("cancelled context did not interrupt the call")
 	}
 }

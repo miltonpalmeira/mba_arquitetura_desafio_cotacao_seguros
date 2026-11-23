@@ -4,14 +4,27 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
-	Port      string
-	Partners  []Partner
-	Tenants   []string
-	Telemetry Telemetry
+	Port       string
+	Partners   []Partner
+	Tenants    []string
+	Telemetry  Telemetry
+	Resilience Resilience
+}
+
+// Resilience is the partner timeout and the per-partner circuit breaker.
+// The numbers are the ones defended in the SAD.
+type Resilience struct {
+	PartnerTimeout      time.Duration
+	ConsecutiveFailures uint32
+	Interval            time.Duration
+	OpenFor             time.Duration
+	HalfOpenMaxRequests uint32
 }
 
 type Partner struct {
@@ -35,6 +48,24 @@ const defaultCollector = "http://localhost:4317"
 
 const defaultServiceName = "quotation-api"
 
+const (
+	defaultPartnerTimeoutMS    = 2500
+	defaultConsecutiveFailures = 5
+	defaultBreakerIntervalMS   = 60000
+	defaultBreakerOpenMS       = 30000
+	defaultHalfOpenRequests    = 1
+)
+
+func DefaultResilience() Resilience {
+	return Resilience{
+		PartnerTimeout:      defaultPartnerTimeoutMS * time.Millisecond,
+		ConsecutiveFailures: defaultConsecutiveFailures,
+		Interval:            defaultBreakerIntervalMS * time.Millisecond,
+		OpenFor:             defaultBreakerOpenMS * time.Millisecond,
+		HalfOpenMaxRequests: defaultHalfOpenRequests,
+	}
+}
+
 func LoadConfig(env func(string) string) (Config, error) {
 	cfg := Config{Port: text(env, "PORT", "8080")}
 
@@ -48,7 +79,54 @@ func LoadConfig(env func(string) string) (Config, error) {
 	if cfg.Telemetry, err = parseTelemetry(env); err != nil {
 		return Config{}, err
 	}
+	if cfg.Resilience, err = parseResilience(env); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+func parseResilience(env func(string) string) (Resilience, error) {
+	cfg := DefaultResilience()
+
+	timeout, err := positiveInt(env, "PARTNER_TIMEOUT_MS", defaultPartnerTimeoutMS)
+	if err != nil {
+		return Resilience{}, err
+	}
+	failures, err := positiveInt(env, "BREAKER_CONSECUTIVE_FAILURES", defaultConsecutiveFailures)
+	if err != nil {
+		return Resilience{}, err
+	}
+	interval, err := positiveInt(env, "BREAKER_INTERVAL_MS", defaultBreakerIntervalMS)
+	if err != nil {
+		return Resilience{}, err
+	}
+	openFor, err := positiveInt(env, "BREAKER_OPEN_MS", defaultBreakerOpenMS)
+	if err != nil {
+		return Resilience{}, err
+	}
+	halfOpen, err := positiveInt(env, "BREAKER_HALF_OPEN_MAX", defaultHalfOpenRequests)
+	if err != nil {
+		return Resilience{}, err
+	}
+
+	cfg.PartnerTimeout = time.Duration(timeout) * time.Millisecond
+	cfg.ConsecutiveFailures = uint32(failures)
+	cfg.Interval = time.Duration(interval) * time.Millisecond
+	cfg.OpenFor = time.Duration(openFor) * time.Millisecond
+	cfg.HalfOpenMaxRequests = uint32(halfOpen)
+	return cfg, nil
+}
+
+func positiveInt(env func(string) string, key string, fallback int) (int, error) {
+	raw := strings.TrimSpace(env(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%s: %q is not a positive integer", key, raw)
+	}
+	return n, nil
 }
 
 func parseTelemetry(env func(string) string) (Telemetry, error) {

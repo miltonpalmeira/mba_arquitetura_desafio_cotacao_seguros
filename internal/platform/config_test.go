@@ -100,6 +100,27 @@ func TestTelemetryOffSkipsEndpointValidation(t *testing.T) {
 	}
 }
 
+func TestDefaultResilienceMatchesTheSAD(t *testing.T) {
+	cfg, err := LoadConfig(env(nil))
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	want := DefaultResilience()
+	if cfg.Resilience != want {
+		t.Fatalf("resilience %+v, want %+v", cfg.Resilience, want)
+	}
+	if cfg.Resilience.PartnerTimeout.Milliseconds() != 2500 {
+		t.Fatalf("timeout %s, want 2500ms", cfg.Resilience.PartnerTimeout)
+	}
+	if cfg.Resilience.ConsecutiveFailures != 5 || cfg.Resilience.HalfOpenMaxRequests != 1 {
+		t.Fatalf("breaker counts %+v", cfg.Resilience)
+	}
+	if cfg.Resilience.Interval.Milliseconds() != 60000 || cfg.Resilience.OpenFor.Milliseconds() != 30000 {
+		t.Fatalf("breaker windows %+v", cfg.Resilience)
+	}
+}
+
 func TestInvalidConfigFails(t *testing.T) {
 	cases := map[string]map[string]string{
 		"partner without url":                {"PARTNER_ENDPOINTS": "partner-slow"},
@@ -112,6 +133,12 @@ func TestInvalidConfigFails(t *testing.T) {
 		"collector without scheme":           {"OTEL_EXPORTER_OTLP_ENDPOINT": "otel-collector:4317"},
 		"collector without host":             {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://"},
 		"OTEL_SDK_DISABLED is not a boolean": {"OTEL_SDK_DISABLED": "maybe"},
+		"timeout is not a number":            {"PARTNER_TIMEOUT_MS": "slow"},
+		"timeout is zero":                    {"PARTNER_TIMEOUT_MS": "0"},
+		"breaker failures are zero":          {"BREAKER_CONSECUTIVE_FAILURES": "0"},
+		"breaker interval is negative":       {"BREAKER_INTERVAL_MS": "-1"},
+		"open window is not a number":        {"BREAKER_OPEN_MS": "thirty"},
+		"half-open probes are zero":          {"BREAKER_HALF_OPEN_MAX": "0"},
 	}
 
 	for name, vars := range cases {

@@ -1,0 +1,11 @@
+Janela da carga: 2026-11-17 22:12:50 UTC a 22:13:14 UTC.
+Avaliação instantânea: 2026-11-17T22:13:14Z (time=1794953594).
+Os percentis abaixo são histogram_quantile do Prometheus. O p95 empírico da carga está em antes-reproduce.txt.
+
+histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))
+  9.387 s
+
+histogram_quantile(0.95, sum by (server_address, le) (rate(http_client_request_duration_seconds_bucket[1m])))
+  partner-slow        2.425 s
+  partner-flaky       0.2425 s
+  partner-degrading   7.246 s

@@ -29,8 +29,20 @@ func main() {
 		log.Fatalf("telemetry: %v", err)
 	}
 
+	cache, err := quotation.NewRedisStore(cfg.Cache.Addr, cfg.Cache.TTL)
+	if err != nil {
+		log.Fatalf("cache: %v", err)
+	}
+	ping, cancelPing := context.WithTimeout(context.Background(), 2*time.Second)
+	err = cache.Ping(ping)
+	cancelPing()
+	if err != nil {
+		_ = cache.Close()
+		log.Fatalf("redis: %v", err)
+	}
+
 	api := quotation.NewAPI(
-		quotation.NewService(cfg.Partners, partner.NewClient(cfg.Resilience)),
+		quotation.NewService(cfg.Partners, partner.NewClient(cfg.Resilience)).WithCache(cache),
 		cfg.Tenants,
 	)
 
@@ -50,6 +62,9 @@ func main() {
 		}
 		if err := stopTelemetry(shutdown); err != nil {
 			log.Printf("quotation-api: telemetry shutdown: %v", err)
+		}
+		if err := cache.Close(); err != nil {
+			log.Printf("quotation-api: redis shutdown: %v", err)
 		}
 	}()
 

@@ -121,6 +121,24 @@ func TestDefaultResilienceMatchesTheSAD(t *testing.T) {
 	}
 }
 
+func TestDefaultCacheMatchesTheSAD(t *testing.T) {
+	cfg, err := LoadConfig(env(nil))
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	want := DefaultCache()
+	if cfg.Cache != want {
+		t.Fatalf("cache %+v, want %+v", cfg.Cache, want)
+	}
+	if cfg.Cache.Addr != "localhost:6379" {
+		t.Fatalf("redis address %q, want localhost:6379", cfg.Cache.Addr)
+	}
+	if cfg.Cache.TTL.Seconds() != 900 {
+		t.Fatalf("ttl %s, want 900s", cfg.Cache.TTL)
+	}
+}
+
 func TestInvalidConfigFails(t *testing.T) {
 	cases := map[string]map[string]string{
 		"partner without url":                {"PARTNER_ENDPOINTS": "partner-slow"},
@@ -139,6 +157,9 @@ func TestInvalidConfigFails(t *testing.T) {
 		"breaker interval is negative":       {"BREAKER_INTERVAL_MS": "-1"},
 		"open window is not a number":        {"BREAKER_OPEN_MS": "thirty"},
 		"half-open probes are zero":          {"BREAKER_HALF_OPEN_MAX": "0"},
+		"cache ttl is zero":                  {"CACHE_TTL_SECONDS": "0"},
+		"cache ttl is not a number":          {"CACHE_TTL_SECONDS": "fifteen"},
+		"redis address is blank":             {"REDIS_ADDR": " "},
 	}
 
 	for name, vars := range cases {

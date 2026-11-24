@@ -15,6 +15,14 @@ type Config struct {
 	Tenants    []string
 	Telemetry  Telemetry
 	Resilience Resilience
+	Cache      Cache
+}
+
+// Cache is the Redis address and the per-partner quote TTL.
+// The numbers are the ones defended in the SAD.
+type Cache struct {
+	Addr string
+	TTL  time.Duration
 }
 
 // Resilience is the partner timeout and the per-partner circuit breaker.
@@ -56,6 +64,10 @@ const (
 	defaultHalfOpenRequests    = 1
 )
 
+const defaultRedisAddr = "localhost:6379"
+
+const defaultCacheTTLSeconds = 900
+
 func DefaultResilience() Resilience {
 	return Resilience{
 		PartnerTimeout:      defaultPartnerTimeoutMS * time.Millisecond,
@@ -63,6 +75,13 @@ func DefaultResilience() Resilience {
 		Interval:            defaultBreakerIntervalMS * time.Millisecond,
 		OpenFor:             defaultBreakerOpenMS * time.Millisecond,
 		HalfOpenMaxRequests: defaultHalfOpenRequests,
+	}
+}
+
+func DefaultCache() Cache {
+	return Cache{
+		Addr: defaultRedisAddr,
+		TTL:  defaultCacheTTLSeconds * time.Second,
 	}
 }
 
@@ -82,7 +101,22 @@ func LoadConfig(env func(string) string) (Config, error) {
 	if cfg.Resilience, err = parseResilience(env); err != nil {
 		return Config{}, err
 	}
+	if cfg.Cache, err = parseCache(env); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+func parseCache(env func(string) string) (Cache, error) {
+	addr := strings.TrimSpace(text(env, "REDIS_ADDR", defaultRedisAddr))
+	if addr == "" {
+		return Cache{}, fmt.Errorf("REDIS_ADDR is required")
+	}
+	seconds, err := positiveInt(env, "CACHE_TTL_SECONDS", defaultCacheTTLSeconds)
+	if err != nil {
+		return Cache{}, err
+	}
+	return Cache{Addr: addr, TTL: time.Duration(seconds) * time.Second}, nil
 }
 
 func parseResilience(env func(string) string) (Resilience, error) {

@@ -13,6 +13,27 @@ const TenantHeader = "X-Tenant-Id"
 
 const requestLimit = 1 << 20
 
+const (
+	messagePartnerUnavailable = "partner insurer unavailable"
+	messageNoQuote            = "no_quote"
+	// retryAfterSeconds is the breaker open time in the SAD: 30 s.
+	retryAfterSeconds = 30
+)
+
+// noQuoteError means every partner missed and there is no premium to show.
+// partners follows the configured order.
+type noQuoteError struct {
+	partners []string
+}
+
+func (e *noQuoteError) Error() string { return messageNoQuote }
+
+type noQuoteBody struct {
+	Message             string   `json:"error"`
+	UnavailablePartners []string `json:"unavailable_partners"`
+	RetryAfterSeconds   int      `json:"retry_after_seconds"`
+}
+
 type API struct {
 	service *Service
 	tenants map[string]bool
@@ -61,6 +82,19 @@ func (a *API) quote(w http.ResponseWriter, r *http.Request) {
 
 	response, err := a.service.Quote(r.Context(), tenant, request)
 	if err != nil {
+		var missed *noQuoteError
+		if errors.As(err, &missed) {
+			partners := missed.partners
+			if partners == nil {
+				partners = []string{}
+			}
+			platform.WriteJSON(w, http.StatusServiceUnavailable, noQuoteBody{
+				Message:             messageNoQuote,
+				UnavailablePartners: partners,
+				RetryAfterSeconds:   retryAfterSeconds,
+			})
+			return
+		}
 		a.respondPartnerFailure(w, err)
 		return
 	}
@@ -73,7 +107,7 @@ func (a *API) respondPartnerFailure(w http.ResponseWriter, err error) {
 	var failure *partner.Error
 	if errors.As(err, &failure) {
 		platform.WriteJSON(w, http.StatusBadGateway, platform.ErrorBody{
-			Message: "partner insurer unavailable",
+			Message: messagePartnerUnavailable,
 			Partner: failure.Partner,
 		})
 		return

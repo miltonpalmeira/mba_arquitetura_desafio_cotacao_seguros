@@ -85,8 +85,12 @@ func (c *Client) breaker(name string) *gobreaker.CircuitBreaker[Quote] {
 		IsExcluded: func(err error) bool {
 			return errors.Is(err, context.Canceled)
 		},
+		OnStateChange: func(changed string, from, to gobreaker.State) {
+			noteBreakerState(changed, from, to)
+		},
 	})
 	c.breakers[name] = created
+	noteBreakerCreated(name)
 	return created
 }
 
@@ -103,7 +107,12 @@ func (c *Client) Quote(ctx context.Context, p platform.Partner, request any) (Qu
 	if err == nil {
 		return quote, nil
 	}
-	if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
+	if errors.Is(err, gobreaker.ErrOpenState) {
+		markShortCircuit(ctx, p.Name, "open")
+		return Quote{}, &Error{Partner: p.Name, Reason: "circuit open"}
+	}
+	if errors.Is(err, gobreaker.ErrTooManyRequests) {
+		markShortCircuit(ctx, p.Name, "half-open")
 		return Quote{}, &Error{Partner: p.Name, Reason: "circuit open"}
 	}
 	return Quote{}, err

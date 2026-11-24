@@ -1,0 +1,31 @@
+Gráfico do p95 de POST /quotes, antes e depois, na mesma escala de 0 a 10 s.
+Consulta, a mesma nas duas colunas: histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))
+
+Antes, nesta máquina. Artefato: docs/evidencias/antes-prometheus.txt e docs/evidencias/antes-reproduce.txt.
+Janela da carga: 2026-11-17 22:12:50–22:13:14 UTC. Avaliação: 2026-11-17T22:13:14Z.
+histogram_quantile = 9.387 s. p95 empírico do loadgen = 8.01 s. Sucesso da carga = 120/200 (60%).
+
+Depois, nesta máquina. Comando: make down e em seguida make reproduce.
+Janela da carga: 2026-11-23 02:14:24–02:14:25 UTC.
+Janela da série: 2026-11-23T02:14:00Z a 2026-11-23T02:16:00Z, passo 5s. Escala: 0 a 10 s.
+Leitura: o antes está em 9,387 s; o depois, enquanto há amostra, fica entre 0,331 s e 0,343 s. NaN é intervalo sem amostra.
+p95 empírico do loadgen = 0.243 s. Sucesso da carga = 200/200 (100%). Vazão = 579.5 req/s.
+
+2026-11-23 02:14:35 UTC = NaN s
+2026-11-23 02:14:40 UTC = 0.3306183839768473 s
+2026-11-23 02:14:45 UTC = 0.3348589132777484 s
+2026-11-23 02:14:50 UTC = 0.3373728028557229 s
+2026-11-23 02:14:55 UTC = 0.3390317674890164 s
+2026-11-23 02:15:00 UTC = 0.3402172272011827 s
+2026-11-23 02:15:05 UTC = 0.34110058656787573 s
+2026-11-23 02:15:10 UTC = 0.3417870225013081 s
+2026-11-23 02:15:15 UTC = 0.3423361004682834 s
+2026-11-23 02:15:20 UTC = 0.34278362948036795 s
+2026-11-23 02:15:25 UTC = 0.3322099159068442 s
+2026-11-23 02:15:30 UTC = 0.3322099159068442 s
+2026-11-23 02:15:35 UTC = NaN s
+2026-11-23 02:15:40 UTC = NaN s
+2026-11-23 02:15:45 UTC = NaN s
+2026-11-23 02:15:50 UTC = NaN s
+2026-11-23 02:15:55 UTC = NaN s
+2026-11-23 02:16:00 UTC = NaN s

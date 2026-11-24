@@ -61,8 +61,14 @@ type partnerRequest struct {
 	Request
 }
 
+// Response is the quote shown to the broker.
+// Degraded is true when at least one partner produced no premium.
+// UnavailablePartners names those partners, in configured order.
+// Both fields are always present: an empty list is a complete quote.
 type Response struct {
-	TenantID  string          `json:"tenant_id"`
-	Quotes    []partner.Quote `json:"quotes"`
-	ElapsedMs int64           `json:"elapsed_ms"`
+	TenantID            string          `json:"tenant_id"`
+	Quotes              []partner.Quote `json:"quotes"`
+	ElapsedMs           int64           `json:"elapsed_ms"`
+	Degraded            bool            `json:"degraded"`
+	UnavailablePartners []string        `json:"unavailable_partners"`
 }

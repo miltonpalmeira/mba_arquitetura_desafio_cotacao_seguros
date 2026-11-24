@@ -1,0 +1,16 @@
+Gráfico do estado do circuit breaker. O degrau da partner-flaky é 0 (closed) e depois 2 (open).
+A carga padrão (make reproduce, 02:14:14–02:14:25 UTC) deixou as três em 0: o cache e as 50 chamadas em voo não produziram 5 falhas consecutivas.
+Prova extra, sequencial, depois do make reproduce e antes de make down: 40 POST http://localhost:8080/quotes, X-Tenant-Id corretora-b, um risco novo por chamada, 2026-11-23 02:18:46–02:19:58 UTC.
+Consulta: partner_breaker_state
+Janela: 2026-11-23T02:13:30Z a 2026-11-23T02:22:30Z, passo 5s. Escala do gauge: 0 closed, 1 half-open, 2 open.
+O meio-aberto dura uma chamada e não aparece no gauge. O contador partner_breaker_transitions_total guarda esse passo.
+
+partner-degrading: 97 amostras, de 2026-11-23 02:14:30 UTC a 2026-11-23 02:22:30 UTC, ultimo valor 0. Mudancas: 2026-11-23 02:14:30 UTC=0
+partner-flaky: 97 amostras, de 2026-11-23 02:14:30 UTC a 2026-11-23 02:22:30 UTC, ultimo valor 2. Mudancas: 2026-11-23 02:14:30 UTC=0; 2026-11-23 02:19:10 UTC=2
+partner-slow: 97 amostras, de 2026-11-23 02:14:30 UTC a 2026-11-23 02:22:30 UTC, ultimo valor 0. Mudancas: 2026-11-23 02:14:30 UTC=0
+
+Consulta: partner_breaker_transitions_total
+Janela: 2026-11-23T02:13:30Z a 2026-11-23T02:22:30Z, passo 5s.
+partner-flaky closed -> open: 2026-11-23 02:19:10 UTC=1
+partner-flaky half-open -> open: 2026-11-23 02:19:40 UTC=1
+partner-flaky open -> half-open: 2026-11-23 02:19:40 UTC=1
